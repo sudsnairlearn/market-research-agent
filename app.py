@@ -22,7 +22,7 @@ from competitor_agent import demo_data as dd
 
 load_dotenv()
 
-st.set_page_config(page_title="Competitor Analysis Agent", page_icon="🛰️", layout="wide")
+st.set_page_config(page_title="Market Research Agent", page_icon="🛰️", layout="wide")
 
 # ---------------------------------------------------------------- styling -----
 st.markdown(
@@ -246,7 +246,7 @@ with st.sidebar:
 
 # --------------------------------------------------------------- header -------
 st.markdown(
-    f"<div class='hero'><h1>🛰️ Competitor Analysis Agent</h1>"
+    f"<div class='hero'><h1>🛰️ Market Research Agent</h1>"
     f"<p>Autonomous market research • LangGraph + Nebius • analyzing "
     f"<b>{target or '—'}</b></p></div>",
     unsafe_allow_html=True,
@@ -286,6 +286,7 @@ if run:
             "competitors": final.get("competitors", []),
             "insights": final.get("insights", []),
             "briefing": final.get("briefing", ""),
+            "docs_used": final.get("docs_used", []),
             "demo": False,
         }
         st.success(f"Analyzed: {', '.join(st.session_state.result['competitors'])}")
@@ -299,6 +300,13 @@ m1.metric("Target", res["target"])
 m2.metric("Competitors", len(res["competitors"]))
 m3.metric("Insights extracted", len(insights))
 m4.metric("Mode", "Demo" if res.get("demo") else "Live")
+
+docs_used = res.get("docs_used", [])
+if docs_used:
+    from collections import Counter
+    _cnt = Counter(docs_used)
+    _summary = ", ".join(f"{name} ({c})" for name, c in _cnt.items())
+    st.success(f"Local documents used: {_summary}", icon="📄")
 
 if res.get("demo"):
     st.info("Showing the bundled Apple demo. Switch to **Live** mode in the sidebar to run the agent on any company.", icon="💡")

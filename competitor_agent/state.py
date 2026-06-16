@@ -90,3 +90,4 @@ class AgentState(TypedDict, total=False):
     sources: Annotated[List[SourceRef], operator.add]
     briefing: str                                 # final markdown deliverable
     errors: Annotated[List[str], operator.add]
+    docs_used: Annotated[List[str], operator.add]  # local-doc filenames used

@@ -81,6 +81,23 @@ streamlit run app.py
 The UI has three tabs — **Charts**, **Competitor cards**, **Briefing** (with a download
 button). Chart data for Demo mode lives in `competitor_agent/demo_data.py`.
 
+## Tools (web search + document retrieval)
+
+The agent researches with two kinds of tool, registered in `competitor_agent/tools.py`:
+
+- `web_search(query)` — live web search via Tavily.
+- `fetch_document(url)` — downloads a web page or PDF and returns its full extracted text.
+- `search_local_docs(query)` — **BM25** retrieval over local files (`.txt`, `.md`, `.pdf`)
+  in `DOCS_DIR` (default `docs/`). Drop reference files (analyst reports, datasheets,
+  pricing exports, prior research) into `docs/` and the research step pulls the most
+  relevant passages automatically, alongside web results. Change the folder via the
+  `DOCS_DIR` environment variable. (Falls back to keyword-frequency scoring if
+  `rank-bm25` isn't installed.)
+
+Document provenance: any local file actually used in a run is listed in the briefing
+under a **Local documents** heading (with passage counts) and shown as a banner in the
+Streamlit UI, so you can confirm a file was retrieved.
+
 ## Use as a library
 
 ```python

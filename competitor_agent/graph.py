@@ -37,7 +37,7 @@ from .prompts import (
     SYNTH_SYSTEM,
 )
 from .state import AgentState, CompetitorInsight, CompetitorList
-from .tools import web_search
+from .tools import search_local_docs, web_search
 
 
 # Nebius AI Studio exposes an OpenAI-compatible API, so we drive it via ChatOpenAI.
@@ -101,6 +101,7 @@ def research_competitor(payload: dict) -> dict:
     evidence = []
     sources = []
     errors = []
+    docs_sources = []
     for q in queries:
         try:
             res = web_search.invoke({"query": q, "max_results": 5})
@@ -113,6 +114,17 @@ def research_competitor(payload: dict) -> dict:
             evidence.append({"query": q, **r})
             if r.get("url"):
                 sources.append({"title": r.get("title", ""), "url": r["url"]})
+
+    # Document retrieval: pull relevant passages from any local files in DOCS_DIR.
+    try:
+        docs = search_local_docs.invoke(
+            {"query": f"{competitor} {target} pricing features positioning"}
+        )
+        for ch in docs.get("chunks", []):
+            evidence.append({"query": "local_docs", "source": ch["source"], "content": ch["text"]})
+            docs_sources.append(ch["source"])
+    except Exception as e:
+        errors.append(f"local docs retrieval failed: {e}")
 
     # Structured extraction. Wrapped so one competitor's failure (e.g. a truncated
     # response) doesn't abort the whole graph run.
@@ -145,7 +157,7 @@ def research_competitor(payload: dict) -> dict:
             seen.add(s["url"])
             deduped.append(s)
 
-    return {"insights": [insight], "sources": deduped, "errors": errors}
+    return {"insights": [insight], "sources": deduped, "errors": errors, "docs_used": docs_sources}
 
 
 # --------------------------------------------------------------------------- #
@@ -163,14 +175,27 @@ def synthesize_briefing(state: AgentState) -> dict:
     )
     briefing = resp.content if isinstance(resp.content, str) else str(resp.content)
 
-    # append a sources appendix
+    # append an appendix: web sources, then any local documents that were used
+    appendix = []
     srcs = state.get("sources", [])
     if srcs:
-        lines = ["\n\n---\n\n## Sources\n"]
+        appendix.append("\n\n---\n\n## Sources\n")
         for s in srcs:
             title = s.get("title") or s.get("url")
-            lines.append(f"- [{title}]({s['url']})")
-        briefing += "\n".join(lines)
+            appendix.append(f"- [{title}]({s['url']})")
+
+    docs_used = state.get("docs_used", [])
+    if docs_used:
+        from collections import Counter
+        counts = Counter(docs_used)
+        if not srcs:
+            appendix.append("\n\n---\n")
+        appendix.append("\n### Local documents\n")
+        for name, c in counts.items():
+            appendix.append(f"- {name} — {c} passage(s) retrieved")
+
+    if appendix:
+        briefing += "\n".join(appendix)
     return {"briefing": briefing}
 
 
